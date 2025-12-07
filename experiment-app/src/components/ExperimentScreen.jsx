@@ -19,7 +19,7 @@ function ExperimentScreen({ onFinish, groupName }) {
 
   if (!current) return null;
 
-  // --- 1) AUTO ZAPYTANIE NA WEJŚCIU (DUŻY PROMPT Z TEMPLATE) ---
+  // --- AUTO ZAPYTANIE NA START (DUŻY PROMPT) ---
   const callInitialAI = async () => {
     try {
       setResponse("Thinking…");
@@ -50,29 +50,29 @@ function ExperimentScreen({ onFinish, groupName }) {
     }
   }, [index, isASIG, current]);
 
-  // --- 2) ZAPYTANIE PO KLIKNIĘCIU ASK (MAŁY PROMPT Z PYTANIEM USERA) ---
+  // --- FOLLOW-UP (MAŁY PROMPT) ---
   const handleAsk = async () => {
     try {
-      const userQuestion = prompt.trim() || "Please give me a deeper explanation.";
-
+      const userQuestion =
+        prompt.trim() || "Please give me a deeper explanation.";
       setResponse("Thinking…");
 
       const followupPrompt = `
 You are analysing a potentially manipulative chart and its narrative.
 
-Here is the context:
-- Image (URL or description): ${current.image || "Image not available"}
-- Caption: "${current.caption}"
-- Story: "${current.story}"
+Context:
+Image: ${current.image || "Image not available"}
+Caption: "${current.caption}"
+Story: "${current.story}"
 
-The user now asks the following follow-up question or gives an instruction:
+User asks:
 "${userQuestion}"
 
-Please answer in clear, friendly English with:
-- Short paragraphs.
-- Optional numbered points like "1.", "2.", "3." when listing things.
-- Do NOT use bullet characters like "-" or "•" at the beginning of lines.
-- Keep the structure tidy and easy to read.
+Please respond with:
+• Clear paragraphs.
+• Optional numbered sections like "1.", "2.", "3."
+• NO bullet characters "-", "•" or "*".
+• Justified logical structure and readable formatting.
 `;
 
       const completion = await client.chat.completions.create({
@@ -89,6 +89,7 @@ Please answer in clear, friendly English with:
     }
   };
 
+  // --- NEXT ---
   const handleNext = () => {
     if (index < experimentExamples.length - 1) {
       setIndex((prev) => prev + 1);
@@ -99,27 +100,27 @@ Please answer in clear, friendly English with:
     }
   };
 
+  // --- BACK ---
+  const handleBack = () => {
+    if (index > 0) {
+      setIndex((prev) => prev - 1);
+      setPrompt("");
+      setResponse("");
+    }
+  };
+
   // ----------------------- ASIG LAYOUT -----------------------
   if (isASIG) {
     return (
       <div className="screen-card">
-        <h1 className="screen-title">
+        <h1 className="screen-title" style={{ textAlign: "justify" }}>
           Inference {index + 1} / {experimentExamples.length}
         </h1>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "20px",
-          }}
-        >
+        <div style={{ display: "flex", gap: "20px" }}>
           {/* LEWY PANEL */}
           <div
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-            }}
+            style={{ flex: 1, display: "flex", flexDirection: "column" }}
           >
             <div className="image-placeholder">
               {current.image ? (
@@ -133,30 +134,33 @@ Please answer in clear, friendly English with:
               )}
             </div>
 
-            <p style={{ marginTop: "16px", fontWeight: 600 }}>
+            <p
+              style={{
+                marginTop: "16px",
+                fontWeight: 600,
+                textAlign: "justify",
+                whiteSpace: "pre-wrap",
+              }}
+            >
               {current.statement}
             </p>
           </div>
 
-          {/* PRAWY PANEL – WIĘKSZY, ALE NADAL SCROLLOWALNY */}
-          <div
-            style={{
-              flex: 1.2,
-              display: "flex",
-            }}
-          >
+          {/* PRAWY PANEL (ODPOWIEDŹ AI) */}
+          <div style={{ flex: 1.2, display: "flex" }}>
             <div
               style={{
                 width: "100%",
-                height: "400px", // trochę większy box na odpowiedź
+                height: "400px",
                 background: "#444",
                 color: "white",
                 borderRadius: "12px",
                 padding: "16px",
                 fontSize: "15px",
                 lineHeight: 1.5,
-                overflowY: "auto", // dalej scrollowalne
-                whiteSpace: "pre-wrap", // zachowuje nowe linie sensownie
+                overflowY: "auto",
+                whiteSpace: "pre-wrap",
+                textAlign: "justify",
               }}
             >
               {response || "OpenAI response will appear here..."}
@@ -164,7 +168,7 @@ Please answer in clear, friendly English with:
           </div>
         </div>
 
-        {/* PROMPT */}
+        {/* PROMPT FIELD */}
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -172,21 +176,36 @@ Please answer in clear, friendly English with:
           style={{
             width: "100%",
             marginTop: "24px",
-            height: "60px",
+            height: "70px",
             resize: "none",
             padding: "12px",
             borderRadius: "12px",
             background: "#444",
             color: "white",
             border: "none",
+            textAlign: "justify",
           }}
         />
 
-        {/* PRZYCISKI */}
-        <div style={{ display: "flex", justifyContent: "center", gap: "16px" }}>
+        {/* BUTTONS */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "16px",
+            marginTop: "12px",
+          }}
+        >
+          {index > 0 && (
+            <button className="btn btn-secondary" onClick={handleBack}>
+              Back
+            </button>
+          )}
+
           <button className="btn btn-primary" onClick={handleAsk}>
             Ask
           </button>
+
           <button className="btn btn-primary" onClick={handleNext}>
             Next
           </button>
@@ -198,7 +217,7 @@ Please answer in clear, friendly English with:
   // ----------------------- ELG LAYOUT -----------------------
   return (
     <div className="screen-card">
-      <h1 className="screen-title">
+      <h1 className="screen-title" style={{ textAlign: "justify" }}>
         Inference {index + 1} / {experimentExamples.length}
       </h1>
 
@@ -215,16 +234,50 @@ Please answer in clear, friendly English with:
           )}
         </div>
 
-        <p>{current.statement}</p>
+        {/* Statement z labelką */}
+        <p
+          style={{
+            textAlign: "justify",
+            marginTop: "16px",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          <strong>Statement: </strong>
+          {current.statement}
+        </p>
 
-        <div className="scroll-box">
-          <p>{current.description}</p>
-        </div>
+        {/* Description z labelką, bez scrollboxa */}
+        <p
+          style={{
+            textAlign: "justify",
+            marginTop: "12px",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          <strong>Description: </strong>
+          {current.description}
+        </p>
       </div>
 
-      <button className="btn btn-primary" onClick={handleNext}>
-        {index === experimentExamples.length - 1 ? "Finish" : "Next"}
-      </button>
+      {/* BUTTONS */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "16px",
+          marginTop: "12px",
+        }}
+      >
+        {index > 0 && (
+          <button className="btn btn-secondary" onClick={handleBack}>
+            Back
+          </button>
+        )}
+
+        <button className="btn btn-primary" onClick={handleNext}>
+          {index === experimentExamples.length - 1 ? "Finish" : "Next"}
+        </button>
+      </div>
     </div>
   );
 }

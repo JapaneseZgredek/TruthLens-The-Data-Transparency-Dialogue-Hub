@@ -7,7 +7,7 @@ function EndScreen({ onRestart }) {
 
       <div className="screen-content">
         <p>
-          End of the experiment.
+          Wait for everyone else to finish reading.
         </p>
       </div>
 

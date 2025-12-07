@@ -9,7 +9,7 @@ function InstructionScreen({ groupName, onStart }) {
       <h1 className="screen-title">{groupInstruction.title}</h1>
 
       <div className="screen-content">
-        <p style={{ whiteSpace: "pre-line" }}>
+        <p style={{ whiteSpace: "pre-line", textAlign: "justify" }}>
           {groupInstruction.text}
         </p>
       </div>
