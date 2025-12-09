@@ -8,7 +8,8 @@ export default defineConfig({
   },
   server: {
     allowedHosts: [
-      'unretrenched-pacificistically-bernita.ngrok-free.dev'
+      '*.ngrok-free.app',
+      '*.ngrok-free.dev'
     ]
   }
 })
