@@ -95,8 +95,11 @@ Please respond with:
       setIndex((prev) => prev + 1);
       setPrompt("");
       setResponse("");
+      // przewiń na górę strony
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       onFinish();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
