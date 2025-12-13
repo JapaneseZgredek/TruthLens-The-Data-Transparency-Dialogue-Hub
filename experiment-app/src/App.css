@@ -117,3 +117,13 @@
   font-size: 14px;
   color: #444;
 }
+
+
+button:disabled,
+.btn:disabled,
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.4;           /* wyszarzenie */
+  cursor: not-allowed;    /* typowy kursor dla disabled */
+  filter: grayscale(40%); /* subtelne przygaszenie */
+}

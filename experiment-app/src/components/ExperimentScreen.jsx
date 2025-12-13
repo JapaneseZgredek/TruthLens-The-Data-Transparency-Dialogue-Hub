@@ -13,6 +13,9 @@ function ExperimentScreen({ onFinish, groupName }) {
   const [index, setIndex] = useState(0);
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState("");
+  const [isLoading, setIsLoading] = useState(false);       // dowolne zapytanie w toku
+  const [initialLoaded, setInitialLoaded] = useState(false); // czy odpowiedź z auto-prompta już przyszła
+  const [hasAsked, setHasAsked] = useState(false);         // czy user użył Ask na tym slajdzie
 
   const current = experimentExamples[index];
   const isASIG = groupName === "ASIG";
@@ -22,6 +25,9 @@ function ExperimentScreen({ onFinish, groupName }) {
   // --- AUTO ZAPYTANIE NA START (DUŻY PROMPT) ---
   const callInitialAI = async () => {
     try {
+      setIsLoading(true);
+      setInitialLoaded(false);
+      setHasAsked(false);
       setResponse("Thinking…");
 
       const promptToSend = generateASIGPrompt({
@@ -38,9 +44,13 @@ function ExperimentScreen({ onFinish, groupName }) {
       });
 
       setResponse(completion.choices[0].message.content);
+      setInitialLoaded(true);
     } catch (err) {
       console.error(err);
       setResponse("❌ Error while contacting OpenAI API.");
+      setInitialLoaded(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -48,6 +58,7 @@ function ExperimentScreen({ onFinish, groupName }) {
     if (isASIG && current) {
       callInitialAI();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, isASIG, current]);
 
   // --- FOLLOW-UP (MAŁY PROMPT) ---
@@ -55,6 +66,8 @@ function ExperimentScreen({ onFinish, groupName }) {
     try {
       const userQuestion =
         prompt.trim() || "Please give me a deeper explanation.";
+
+      setIsLoading(true);
       setResponse("Thinking…");
 
       const followupPrompt = `
@@ -83,9 +96,12 @@ Please respond with:
       });
 
       setResponse(completion.choices[0].message.content);
+      setHasAsked(true); // dopiero po udanej odpowiedzi można kliknąć Next
     } catch (err) {
       console.error(err);
       setResponse("❌ Error while contacting OpenAI API.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -95,11 +111,10 @@ Please respond with:
       setIndex((prev) => prev + 1);
       setPrompt("");
       setResponse("");
-      // przewiń na górę strony
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      setHasAsked(false);
+      setInitialLoaded(false);
     } else {
       onFinish();
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -109,6 +124,8 @@ Please respond with:
       setIndex((prev) => prev - 1);
       setPrompt("");
       setResponse("");
+      setHasAsked(false);
+      setInitialLoaded(false);
     }
   };
 
@@ -116,45 +133,65 @@ Please respond with:
   if (isASIG) {
     return (
       <div className="screen-card">
-        <h1 className="screen-title" style={{ textAlign: "justify" }}>
+        <h1 className="screen-title" style={{ textAlign: "center" }}>
           Inference {index + 1} / {experimentExamples.length}
         </h1>
 
-        <div style={{ display: "flex", gap: "20px" }}>
-          {/* LEWY PANEL */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "20px",
+            width: "100%",
+          }}
+        >
+          {/* DUŻY OBRAZ */}
           <div
-            style={{ flex: 1, display: "flex", flexDirection: "column" }}
+            className="image-placeholder"
+            style={{
+              width: "70%",
+              maxWidth: "720px",
+              minHeight: "260px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <div className="image-placeholder">
-              {current.image ? (
-                <img
-                  src={current.image}
-                  alt="Stimulus"
-                  style={{ maxWidth: "100%", borderRadius: "16px" }}
-                />
-              ) : (
-                "Image placeholder"
-              )}
-            </div>
-
-            <p
-              style={{
-                marginTop: "16px",
-                fontWeight: 600,
-                textAlign: "justify",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {current.statement}
-            </p>
+            {current.image ? (
+              <img
+                src={current.image}
+                alt="Stimulus"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "400px",
+                  borderRadius: "16px",
+                  objectFit: "contain",
+                }}
+              />
+            ) : (
+              "Image placeholder"
+            )}
           </div>
 
-          {/* PRAWY PANEL (ODPOWIEDŹ AI) */}
-          <div style={{ flex: 1.2, display: "flex" }}>
+          {/* STATEMENT POD OBRAZEM */}
+          <p
+            style={{
+              marginTop: "4px",
+              fontWeight: 600,
+              textAlign: "center",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {current.statement}
+          </p>
+
+          {/* BOX NA ODPOWIEDŹ AI */}
+          <div style={{ width: "80%", maxWidth: "900px" }}>
             <div
               style={{
                 width: "100%",
-                height: "400px",
+                height: "260px",
                 background: "#444",
                 color: "white",
                 borderRadius: "12px",
@@ -166,52 +203,65 @@ Please respond with:
                 textAlign: "justify",
               }}
             >
-              {response || "OpenAI response will appear here..."}
+              {response || (isLoading ? "Thinking…" : "OpenAI response will appear here...")}
             </div>
           </div>
-        </div>
 
-        {/* PROMPT FIELD */}
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Write your prompt here..."
-          style={{
-            width: "100%",
-            marginTop: "24px",
-            height: "70px",
-            resize: "none",
-            padding: "12px",
-            borderRadius: "12px",
-            background: "#444",
-            color: "white",
-            border: "none",
-            textAlign: "justify",
-          }}
-        />
+          {/* TEXT AREA DO PROMPTU */}
+          <div style={{ width: "80%", maxWidth: "900px" }}>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Write your prompt here..."
+              style={{
+                width: "100%",
+                height: "70px",
+                resize: "none",
+                padding: "12px",
+                borderRadius: "12px",
+                background: "#444",
+                color: "white",
+                border: "none",
+                textAlign: "justify",
+              }}
+            />
+          </div>
 
-        {/* BUTTONS */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "16px",
-            marginTop: "12px",
-          }}
-        >
-          {index > 0 && (
-            <button className="btn btn-secondary" onClick={handleBack}>
-              Back
+          {/* PRZYCISKI */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "24px",
+              marginTop: "12px",
+            }}
+          >
+            {index > 0 && (
+              <button
+                className="btn btn-secondary"
+                onClick={handleBack}
+                disabled={isLoading}
+              >
+                Back
+              </button>
+            )}
+
+            <button
+              className="btn btn-primary"
+              onClick={handleAsk}
+              disabled={!initialLoaded || isLoading}
+            >
+              Ask
             </button>
-          )}
 
-          <button className="btn btn-primary" onClick={handleAsk}>
-            Ask
-          </button>
-
-          <button className="btn btn-primary" onClick={handleNext}>
-            Next
-          </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleNext}
+              disabled={!hasAsked || isLoading}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     );
